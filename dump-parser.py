@@ -1,98 +1,75 @@
 #!/usr/bin/python
 from validate_email import validate_email
-import os 
+import sys
+
 
 def stringToIntArray(indexs):
-	if indexs=="":
-		return []
-	else:
-		return map(int, indexs.split(" "))
+    return map(int, indexs.split())
+
 
 def displayLine(item, idemail, indexs):
-	i = -1
-	for index in indexs:
-		i+=1
-		if index == idemail:
-			p = "["+str(idemail)+"] %40s "% item[0].encode('string_escape')
-		else:
-			p+= " ["+str(index)+"] : " + item[i].encode('string_escape')
-	return p
+    for i, index in enumerate(indexs):
+        if index == idemail:
+            p = "[{}] {:>40}".format(idemail, item[0].encode('string_escape'))
+        else:
+            p += " [{}] : {}".format(index, item[i].encode('string_escape'))
+    return p
 
 
-filename  = raw_input("Enter filename : ")
+filename = raw_input("Enter filename : ")
 seperator = raw_input("Enter data seperator [,]: ")
 
-indexs    = raw_input("Enter selected indexs (seperate by a single space): ")
-indexs    = stringToIntArray(indexs)
+indexs = raw_input("Enter selected indexs (seperate by a single space): ")
+indexs = stringToIntArray(indexs)
 
-idemail   = raw_input("Enter email index in file (blank for no email check): ")
-idemail   = int(idemail)
+idemail = int(raw_input("Enter email index in file \
+                            (blank for no email check): "))
 
-not_blank_indexs = raw_input("Enter non blank check indexs (blank for no blan check): ")
+not_blank_indexs = raw_input("Enter non blank check indexs \
+                            (blank for no blan check): ")
 not_blank_indexs = stringToIntArray(not_blank_indexs)
 
-print "Dump : %s" %filename
-print "Id Email : %s" %idemail
+print "Dump : {}".format(filename)
+print "Id Email : {}".format(idemail)
 
 try:
-	f = open(filename, 'r')
-except:
-	print "Error in handling file %s"%filename
-	os._exit(-1)
+    user = 0
+    result = {}
 
+    with open(filename, 'r') as f:
+        for line in f:
+            array = line.strip().split(seperator)
+            is_valid = validate_email(array[idemail]) if idemail != "" else True
 
+            if is_valid:
+                is_selected = True
+                for index in not_blank_indexs:
+                    if array[index] in ("<blank>", ""):
+                        is_selected = False
+                        break
 
-user = 0
-result = {}
+            if is_valid and is_selected:
+                user += 1
+                domaine = array[idemail].split("@")[1].encode('string_escape')
 
+                entry = [array[index] for index in indexs]
 
-line = f.readline()
-while line!="":
-	array = line.split(seperator)
-	if idemail!="":
-		is_valid = validate_email(array[idemail])
-	else:
-		is_valid = True
+                result.setdefault(domaine.lower(), []).append(entry)
 
-	if is_valid:
-		is_selected=True
-		for index in not_blank_indexs:
-			if array[index] == "<blank>" or array[index]=="":
-				is_selected=False
-				break
+except IOError:
+    print "Error in handling file {}".format(filename)
+    sys.exit(-1)
 
-
-	if is_valid and is_selected:
-		user=user+1
-		domaine=array[idemail].split("@")[1].encode('string_escape')
-
-		entry = []
-		for index in indexs:
-			entry.append(array[index])
-
-
-		try:
-			result[domaine.lower()].append(entry)
-		except:
-			result[domaine.lower()]=[entry]
-
-	line=f.readline()
-
-
-#Display all domaines
-i = 0
-for domaine in result:
-	i+=1
-	print "%3s : " %i + domaine
+# Display all domaines
+for i, domaine in enumerate(result, 1):
+    print "{:3} : {}".format(i, domaine)
 
 for domaine in result:
-	print "[domaine : ] " + domaine
+    print "[domaine : ] " + domaine
+    nbemail = 0
+    for item in result[domaine]:
+        print displayLine(item, idemail, indexs)
+        nbemail += 1
+    print "=============================== {} ===========================".format(nbemail)
 
-	nbemail=0
-
-	for item in result[domaine]:
-		print displayLine(item, idemail, indexs)
-		nbemail+=1
-	print "=============================== %s ===========================" % nbemail
-
-print "Total %s"%user
+print "Total {}".format(user)
